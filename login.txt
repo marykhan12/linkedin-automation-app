@@ -1,0 +1,164 @@
+import os
+import pickle
+import time
+import random
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+
+
+# ========================================
+# USER CONFIGURATION - FILL THESE OUT
+# ========================================
+
+LINKEDIN_EMAIL = "abdulcui54455@gmail.com"
+LINKEDIN_PASSWORD = "690854455"
+JOB_SEARCH_KEYWORD = "python"
+
+# ========================================
+
+
+def human_type(element, text):
+    """Type text like a human with random delays between characters"""
+    for char in text:
+        element.send_keys(char)
+        time.sleep(random.uniform(0.05, 0.2))  # Random delay between 0.05-0.2 seconds
+
+
+def save_cookies(driver, filename="linkedin_cookies.pkl"):
+    """Save cookies to file"""
+    with open(filename, 'wb') as file:
+        pickle.dump(driver.get_cookies(), file)
+    print("Cookies saved successfully!")
+
+
+def load_cookies(driver, filename="linkedin_cookies.pkl"):
+    """Load cookies from file"""
+    try:
+        with open(filename, 'rb') as file:
+            cookies = pickle.load(file)
+            for cookie in cookies:
+                driver.add_cookie(cookie)
+        print("Cookies loaded successfully!")
+        return True
+    except FileNotFoundError:
+        print("No cookies file found. Will need to login manually.")
+        return False
+
+
+def setup_driver():
+    """Setup Chrome driver with optimized options for faster startup"""
+    chrome_options = Options()
+    
+    # Speed optimization options
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-plugins")
+    chrome_options.add_argument("--disable-images")
+    chrome_options.add_argument("--disable-javascript")
+    chrome_options.add_argument("--disable-css")
+    chrome_options.add_argument("--disable-web-security")
+    chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+    
+    # Anti-detection options
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+    
+    print("Starting Chrome browser...")
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    print("Chrome browser started successfully!")
+    return driver
+
+
+def login_to_linkedin():
+    """Main function to handle LinkedIn login with cookies"""
+    driver = setup_driver()
+    
+    try:
+        # Go to LinkedIn
+        print("Opening LinkedIn...")
+        driver.get("https://www.linkedin.com")
+        time.sleep(2)  # Reduced wait time
+        
+        # Check if cookies file exists and try to load
+        cookies_file = "linkedin_cookies.pkl"
+        if os.path.exists(cookies_file):
+            print("Cookies file found! Loading cookies...")
+            load_cookies(driver, cookies_file)
+            driver.refresh()
+            time.sleep(3)  # Reduced wait time
+            
+            # Check if login was successful
+            if "feed" in driver.current_url or "mynetwork" in driver.current_url:
+                print("Successfully logged in with cookies!")
+                return driver
+            else:
+                print("Cookies didn't work. Proceeding with manual login...")
+        
+        # Manual login process
+        print("Proceeding with email/password login...")
+        
+        # Go to login page if not already there
+        if "login" not in driver.current_url:
+            driver.get("https://www.linkedin.com/login")
+            time.sleep(2)  # Reduced wait time
+        
+        # Find email field and type email like human
+        print("Entering email...")
+        email_field = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "username"))
+        )
+        email_field.clear()
+        human_type(email_field, LINKEDIN_EMAIL)
+        
+        time.sleep(random.uniform(0.5, 1))  # Reduced wait time
+        
+        # Find password field and type password like human
+        print("Entering password...")
+        password_field = driver.find_element(By.ID, "password")
+        password_field.clear()
+        human_type(password_field, LINKEDIN_PASSWORD)
+        
+        time.sleep(random.uniform(0.5, 1))  # Reduced wait time
+        
+        # Click login button
+        print("Clicking login button...")
+        login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+        login_button.click()
+        
+        # Wait for login to complete
+        time.sleep(4)  # Reduced wait time
+        
+        # Check if login was successful and save cookies
+        if "feed" in driver.current_url or "mynetwork" in driver.current_url:
+            print("Login successful! Saving cookies...")
+            save_cookies(driver, cookies_file)
+        else:
+            print("Login might have failed or requires additional verification.")
+        
+        return driver
+        
+    except Exception as e:
+        print(f"Error during login: {str(e)}")
+        driver.quit()
+        return None
+
+
+# Main execution
+if __name__ == "__main__":
+    print("Starting LinkedIn scraper...")
+    driver = login_to_linkedin()
+    
+    if driver:
+        print("Ready for next steps!")
+        # Keep browser open for now
+        input("Press Enter to close browser...")
+        driver.quit()
+    else:
+        print("Failed to login. Please check your credentials.")

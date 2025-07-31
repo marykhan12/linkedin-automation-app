@@ -1,0 +1,8 @@
+streamlit
+streamlit-autorefresh
+selenium
+openai
+numpy
+scikit-learn
+sentence-transformers
+python-dotenv
